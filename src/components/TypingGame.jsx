@@ -1,11 +1,14 @@
 // TypingGame.jsx
 import { useState, useEffect } from "react";
 import { kanaToRomajiMap } from "../utils/kanaToRomaji";
+import { TypingIndex } from "../utils/TypingIndex";
 import { db } from "../firebase";
 import { addDoc, collection } from "firebase/firestore";
 
 export default function TypingGame() {
-    const [target, setTarget] = useState("こんにちは");
+    const [targetIndex, setTargetIndex] = useState(0);
+    const [target, setTarget] = useState(TypingIndex[targetIndex].word);
+
     const [input, setInput] = useState("");
     const [romajiProgress, setRomajiProgress] = useState("");
     const [score, setScore] = useState(0);
@@ -40,18 +43,18 @@ export default function TypingGame() {
         const handleKey = (e) => {
             // 特殊キーを無視
             if (e.key.length > 1) return;
-            
+
             const newInput = input + e.key.toLowerCase();
             const { isValid, isComplete } = checkInput(newInput);
 
             if (isValid) {
                 setInput(newInput);
                 setRomajiProgress(newInput);
-                
+
                 if (isComplete) {
                     setScore(prev => prev + 10);
-                    uploadScore();
-                    nextWord();
+                    // 次の単語へは index を更新するだけにする
+                    setTargetIndex(prev => prev + 1);
                 }
             } else {
                 setInput("");
@@ -60,15 +63,23 @@ export default function TypingGame() {
         };
         window.addEventListener("keydown", handleKey);
         return () => window.removeEventListener("keydown", handleKey);
-    }, [input, target]);
+    }, [input, targetRomaji, targetIndex]);
 
-    const uploadScore = async () => {
-        await addDoc(collection(db, "rankings"), { name: "Player", score, time: new Date().toISOString() });
-    };
+    // targetIndex が増えたら target を更新して入力をリセットする
+    useEffect(() => {
+        if (targetIndex >= TypingIndex.length) {
+            // 範囲外になったら先頭に戻す
+            setTargetIndex(0);
+            setTarget(TypingIndex[0].word);
+        } else {
+            setTarget(TypingIndex[targetIndex].word);
+        }
+        setInput("");
+        setRomajiProgress("");
+    }, [targetIndex]);
 
     const nextWord = () => {
-        setTarget("ありがとう"); // 仮
-        setInput("");
+        setTargetIndex(prev => prev + 1);
     };
 
     return (
