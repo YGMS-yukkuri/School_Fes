@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import { kanaToRomajiMap } from "../utils/kanaToRomaji";
 import { TypingIndex } from "../utils/TypingIndex";
-import { db } from "../firebase";
-import { addDoc, collection } from "firebase/firestore";
 
 export default function TypingGame() {
     const [targetIndex, setTargetIndex] = useState(0);
-    const [target, setTarget] = useState(TypingIndex[targetIndex].word);
+    // 安全のため初期値は明示的に 0 番目を参照（存在しない場合は空文字）
+    const [target, setTarget] = useState(TypingIndex[0]?.word || "");
 
     const [input, setInput] = useState("");
     const [romajiProgress, setRomajiProgress] = useState("");
@@ -67,20 +66,26 @@ export default function TypingGame() {
 
     // targetIndex が増えたら target を更新して入力をリセットする
     useEffect(() => {
-        if (targetIndex >= TypingIndex.length) {
-            // 範囲外になったら先頭に戻す
-            setTargetIndex(0);
-            setTarget(TypingIndex[0].word);
-        } else {
-            setTarget(TypingIndex[targetIndex].word);
+        // TypingIndex が空の可能性にも対応
+        if (!TypingIndex || TypingIndex.length === 0) {
+            setTarget("");
+            setInput("");
+            setRomajiProgress("");
+            return;
         }
+
+        // targetIndex が範囲外になった場合は 0 に戻し、範囲内のインデックスを確実に使う
+        let idx = targetIndex;
+        if (idx >= TypingIndex.length) {
+            idx = 0;
+            // 状態を 0 に戻す（これが再度 effect を走らせるが問題ない）
+            setTargetIndex(0);
+        }
+
+        setTarget(TypingIndex[idx].word);
         setInput("");
         setRomajiProgress("");
     }, [targetIndex]);
-
-    const nextWord = () => {
-        setTargetIndex(prev => prev + 1);
-    };
 
     return (
         <div>
